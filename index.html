@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasımpatı (Chrysanthemum) Çizim Simülasyonu</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+
+        /* Glassmorphic Cards */
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom Color Swatches Glow */
+        .color-preset-btn {
+            transition: all 0.2s ease;
+        }
+        .color-preset-btn.active {
+            ring-2: 2px;
+            transform: scale(1.08);
+        }
+
+        /* Canvas Container */
+        #canvas-wrapper {
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header Navigation -->
+    <header class="glass-panel sticky top-0 z-50 border-b border-gray-800 px-4 py-3 sm:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                    <i data-lucide="flower-2" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white leading-tight">Kasımpatı Sanat Stüdyosu</h1>
+                    <p class="text-xs text-gray-400">Parametrik & Etkileşimli Çiçek Çizimi</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="btn-replay" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-950 font-semibold text-sm transition-all shadow-lg shadow-amber-500/20">
+                    <i data-lucide="play" class="w-4 h-4"></i>
+                    <span>Yeniden Aç</span>
+                </button>
+                <button id="btn-download" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-sm font-medium transition-all">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">İndir</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex-grow flex flex-col lg:flex-row gap-6 items-stretch">
+        
+        <!-- Left Column: Interactive Canvas -->
+        <div class="flex-grow flex flex-col items-center justify-center min-h-[450px] lg:min-h-[600px] w-full">
+            <div id="canvas-wrapper" class="w-full h-full min-h-[450px] lg:min-h-[600px] rounded-2xl overflow-hidden glass-panel flex items-center justify-center relative">
+                <canvas id="flowerCanvas" class="w-full h-full cursor-pointer block"></canvas>
+                
+                <!-- Canvas Overlay Info -->
+                <div class="absolute bottom-4 left-4 bg-gray-900/80 backdrop-blur px-3 py-1.5 rounded-full text-xs text-gray-300 border border-gray-700/50 flex items-center gap-2 pointer-events-none">
+                    <i data-lucide="info" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Tıkla: Yeni Çiçek Ekle | Sürükle: Rüzgar Yönlendir</span>
+                </div>
+
+                <!-- Progress Bar during Animation -->
+                <div id="anim-progress" class="absolute top-0 left-0 h-1 bg-amber-500 transition-all duration-75 w-0"></div>
+            </div>
+        </div>
+
+        <!-- Right Column: Controls Dashboard -->
+        <aside class="w-full lg:w-96 flex flex-col gap-4">
+            
+            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-5 border border-gray-800">
+                <h2 class="text-base font-semibold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
+                    <i data-lucide="sliders" class="w-4 h-4 text-amber-400"></i>
+                    Çiçek Parametreleri
+                </h2>
+
+                <!-- Color Palette Selection -->
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-medium text-gray-300 flex justify-between">
+                        <span>Renk Paleti</span>
+                        <span id="palette-name-label" class="text-amber-400 font-semibold">Altın Sarı</span>
+                    </label>
+                    <div class="grid grid-cols-5 gap-2" id="palette-buttons">
+                        <!-- Color buttons dynamically initialized -->
+                    </div>
+                </div>
+
+                <!-- Petal Count Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span class="text-gray-300">Taç Yaprak Yoğunluğu</span>
+                        <span id="petal-count-val" class="text-amber-400">220 Yaprak</span>
+                    </div>
+                    <input type="range" id="slider-petals" min="60" max="450" value="220" 
+                           class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                </div>
+
+                <!-- Flower Size Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span class="text-gray-300">Çiçek Boyutu</span>
+                        <span id="flower-size-val" class="text-amber-400">140 px</span>
+                    </div>
+                    <input type="range" id="slider-size" min="70" max="220" value="140" 
+                           class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                </div>
+
+                <!-- Petal Curvature / Slenderness -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span class="text-gray-300">Yaprak Kıvrımı & Uzunluk</span>
+                        <span id="petal-curl-val" class="text-amber-400">Orta</span>
+                    </div>
+                    <input type="range" id="slider-curl" min="1" max="5" step="0.1" value="2.5" 
+                           class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                </div>
+
+                <!-- Wind / Movement Effect Slider -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span class="text-gray-300">Rüzgar Şiddeti</span>
+                        <span id="wind-val" class="text-amber-400">Hafif</span>
+                    </div>
+                    <input type="range" id="slider-wind" min="0" max="10" step="0.5" value="3" 
+                           class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                </div>
+
+                <!-- Animation Speed -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-xs font-medium">
+                        <span class="text-gray-300">Açılma Hızı</span>
+                        <span id="speed-val" class="text-amber-400">1x</span>
+                    </div>
+                    <input type="range" id="slider-speed" min="0.2" max="3" step="0.1" value="1" 
+                           class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                </div>
+
+                <!-- Action Toggles -->
+                <div class="pt-2 border-t border-gray-800 flex flex-col gap-2">
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="text-xs font-medium text-gray-300 flex items-center gap-2">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                            Polen Işıltı Efekti
+                        </span>
+                        <input type="checkbox" id="toggle-particles" checked class="w-4 h-4 rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-900">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="text-xs font-medium text-gray-300 flex items-center gap-2">
+                            <i data-lucide="sprout" class="w-3.5 h-3.5 text-green-400"></i>
+                            Sap ve Yapraklar
+                        </span>
+                        <input type="checkbox" id="toggle-stem" checked class="w-4 h-4 rounded bg-gray-800 border-gray-700 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-900">
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Preset Colors Quick Switch -->
+            <div class="glass-panel rounded-2xl p-4 border border-gray-800 flex items-center justify-between">
+                <span class="text-xs text-gray-400">Mod:</span>
+                <div class="flex gap-2">
+                    <button id="btn-clear-canvas" class="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-red-400 transition-colors border border-gray-700">
+                        Ekranı Temizle
+                    </button>
+                    <button id="btn-add-random" class="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors">
+                        + Rastgele Çiçek
+                    </button>
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-panel border-t border-gray-800 py-3 text-center text-xs text-gray-500">
+        Kasımpatı (Chrysanthemum) Etkileşimli HTML5 Canvas Simülasyonu
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Color Palettes for Chrysanthemums
+        const PALETTES = [
+            {
+                name: 'Altın Sarı',
+                inner: '#ffaa00',
+                middle: '#ff8800',
+                outer: '#ffd000',
+                base: '#b35900',
+                preview: 'linear-gradient(135deg, #ffd000, #ff8800)'
+            },
+            {
+                name: 'Kraliyet Moru',
+                inner: '#9d4edd',
+                middle: '#7b2cbf',
+                outer: '#e0aaff',
+                base: '#3c096c',
+                preview: 'linear-gradient(135deg, #e0aaff, #7b2cbf)'
+            },
+            {
+                name: 'Pudra Pembe',
+                inner: '#ff85a1',
+                middle: '#f72585',
+                outer: '#ffb3c1',
+                base: '#7209b7',
+                preview: 'linear-gradient(135deg, #ffb3c1, #f72585)'
+            },
+            {
+                name: 'Kar Beyazı',
+                inner: '#e2e8f0',
+                middle: '#cbd5e1',
+                outer: '#ffffff',
+                base: '#64748b',
+                preview: 'linear-gradient(135deg, #ffffff, #cbd5e1)'
+            },
+            {
+                name: 'Gün Batımı',
+                inner: '#ff4d6d',
+                middle: '#ff758f',
+                outer: '#ffb703',
+                base: '#800f2f',
+                preview: 'linear-gradient(135deg, #ffb703, #ff4d6d)'
+            }
+        ];
+
+        // Global State & Setup
+        const canvas = document.getElementById('flowerCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+
+        let flowers = [];
+        let particles = [];
+        let animProgress = 0;
+        let animationFrameId = null;
+        let selectedPalette = PALETTES[0];
+        let globalTime = 0;
+
+        // UI Element References
+        const sliderPetals = document.getElementById('slider-petals');
+        const sliderSize = document.getElementById('slider-size');
+        const sliderCurl = document.getElementById('slider-curl');
+        const sliderWind = document.getElementById('slider-wind');
+        const sliderSpeed = document.getElementById('slider-speed');
+        const toggleParticles = document.getElementById('toggle-particles');
+        const toggleStem = document.getElementById('toggle-stem');
+
+        const valPetals = document.getElementById('petal-count-val');
+        const valSize = document.getElementById('flower-size-val');
+        const valCurl = document.getElementById('petal-curl-val');
+        const valWind = document.getElementById('wind-val');
+        const valSpeed = document.getElementById('speed-val');
+        const paletteNameLabel = document.getElementById('palette-name-label');
+        const animProgressBar = document.getElementById('anim-progress');
+
+        // Resize Canvas dynamically
+        function resizeCanvas() {
+            const rect = wrapper.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            if (flowers.length === 0) {
+                initMainFlower();
+            }
+        }
+
+        // Flower Class Definition
+        class Chrysanthemum {
+            constructor(x, y, radius, petalCount, palette, curlFactor) {
+                this.x = x;
+                this.y = y;
+                this.targetRadius = radius;
+                this.petalCount = petalCount;
+                this.palette = palette;
+                this.curlFactor = curlFactor;
+                this.growth = 0; // 0 to 1 growth progress
+                this.seed = Math.random() * 1000;
+                
+                // Pre-generate petal variations for organic realism
+                this.petalDetails = [];
+                const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                const angleIncrement = Math.PI * 2 * goldenRatio;
+
+                for (let i = 0; i < petalCount; i++) {
+                    // Fibonacci Spiral positioning
+                    const t = i / petalCount;
+                    const distanceRatio = Math.sqrt(t); // 0 at center, 1 at edge
+                    const baseAngle = i * angleIncrement;
+                    
+                    // Individual petal parameters
+                    const length = (0.2 + 0.8 * distanceRatio) + (Math.random() * 0.08 - 0.04);
+                    const width = (1 - distanceRatio * 0.5) * (Math.random() * 0.3 + 0.85);
+                    const curve = (Math.random() - 0.5) * 0.4 * curlFactor;
+                    const tipAngleOffset = (Math.random() - 0.5) * 0.2;
+                    
+                    this.petalDetails.push({
+                        angle: baseAngle,
+                        distanceRatio: distanceRatio,
+                        lengthFactor: length,
+                        widthFactor: width,
+                        curve: curve,
+                        tipAngleOffset: tipAngleOffset,
+                        layer: i
+                    });
+                }
+            }
+
+            draw(ctx, time, windIntensity, drawStemEnabled) {
+                const currentRadius = this.targetRadius * this.growth;
+                if (currentRadius <= 0) return;
+
+                // 1. Draw Stem and Leaves if enabled
+                if (drawStemEnabled) {
+                    this.drawStemAndLeaves(ctx, time, windIntensity);
+                }
+
+                // 2. Draw Chrysanthemum Petals Layer by Layer (Center to Outer)
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Apply dynamic wind sway to the flower head
+                const windSway = Math.sin(time * 0.002 + this.seed) * windIntensity * 0.8;
+                ctx.rotate(windSway * (Math.PI / 180));
+
+                // Sort petals to render back-to-front (center petals top or layered)
+                // For dense chrysanthemum, rendering from outer to inner creates realistic overlap depth
+                const sortedPetals = [...this.petalDetails].sort((a, b) => b.distanceRatio - a.distanceRatio);
+
+                sortedPetals.forEach(p => {
+                    // Only render petals that have opened according to growth status
+                    if (p.distanceRatio > this.growth * 1.1) return;
+
+                    const pGrowth = Math.min(1, Math.max(0, (this.growth - p.distanceRatio * 0.3) / 0.7));
+                    if (pGrowth <= 0) return;
+
+                    const petalLength = currentRadius * p.lengthFactor * pGrowth;
+                    const petalWidth = Math.max(2, (currentRadius * 0.08 * p.widthFactor) * (0.3 + 0.7 * p.distanceRatio));
+                    
+                    // Color interpolation based on distance from center
+                    const color = this.getPetalColor(p.distanceRatio);
+
+                    ctx.save();
+                    ctx.rotate(p.angle);
+                    
+                    // Draw single petal curve
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+
+                    // Control Points for Bézier Chrysanthemum Petal Curve (Curved & Tapered)
+                    const midDistance = petalLength * 0.55;
+                    const cp1X = -petalWidth * 1.2 + (p.curve * 15);
+                    const cp1Y = midDistance * 0.5;
+
+                    const cp2X = p.curve * 25;
+                    const cp2Y = petalLength * 0.9;
+
+                    const tipX = (p.curve * 15) + (p.tipAngleOffset * 10);
+                    const tipY = petalLength;
+
+                    // Left Edge
+                    ctx.quadraticCurveTo(cp1X, cp1Y, tipX, tipY);
+                    // Right Edge Back to Base
+                    ctx.quadraticCurveTo(-cp1X * 0.5, cp1Y, 0, 0);
+
+                    ctx.fillStyle = color.fill;
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+                    ctx.shadowBlur = 4;
+                    ctx.shadowOffsetY = 2;
+                    ctx.fill();
+
+                    // Subtle Petal Highlight Stroke
+                    ctx.strokeStyle = color.stroke;
+                    ctx.lineWidth = 0.6;
+                    ctx.stroke();
+
+                    ctx.restore();
+                });
+
+                // 3. Central Bud / Flower Core
+                const coreRadius = Math.max(3, currentRadius * 0.12 * Math.min(1, this.growth * 1.5));
+                const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, coreRadius);
+                coreGrad.addColorStop(0, '#2d1500');
+                coreGrad.addColorStop(0.6, this.palette.inner);
+                coreGrad.addColorStop(1, this.palette.base);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+                ctx.fillStyle = coreGrad;
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            drawStemAndLeaves(ctx, time, windIntensity) {
+                const canvasHeight = ctx.canvas.height;
+                const stemStartY = this.y;
+                const stemEndY = canvasHeight;
+                
+                // Wind sway logic for stem (Bézier curve bending)
+                const windOffset = Math.sin(time * 0.0015 + this.seed) * windIntensity * 6;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(this.x, stemStartY);
+                
+                const controlX = this.x + windOffset * 1.5;
+                const controlY = stemStartY + (stemEndY - stemStartY) * 0.5;
+                
+                ctx.quadraticCurveTo(controlX, controlY, this.x + windOffset * 0.3, stemEndY);
+                
+                ctx.lineWidth = Math.max(3, this.targetRadius * 0.05);
+                const stemGrad = ctx.createLinearGradient(this.x, stemStartY, this.x, stemEndY);
+                stemGrad.addColorStop(0, '#4d7c0f');
+                stemGrad.addColorStop(1, '#1e3a8a');
+                ctx.strokeStyle = '#3f6212';
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // Draw Leaves along the stem
+                const leafGrowth = Math.min(1, this.growth * 1.3);
+                if (leafGrowth > 0.2) {
+                    // Left Leaf
+                    this.drawLeaf(ctx, this.x - 2, stemStartY + 80, -0.8, leafGrowth, windOffset);
+                    // Right Leaf
+                    this.drawLeaf(ctx, this.x + 2, stemStartY + 140, 0.8, leafGrowth, windOffset);
+                }
+
+                ctx.restore();
+            }
+
+            drawLeaf(ctx, x, y, direction, scale, windOffset) {
+                ctx.save();
+                ctx.translate(x + windOffset * 0.5, y);
+                ctx.scale(direction * scale, scale);
+                ctx.rotate(0.3);
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(20, -15, 45, -10, 60, 5);
+                ctx.bezierCurveTo(45, 25, 20, 20, 0, 0);
+
+                const leafGrad = ctx.createLinearGradient(0, 0, 60, 0);
+                leafGrad.addColorStop(0, '#365314');
+                leafGrad.addColorStop(1, '#4d7c0f');
+                ctx.fillStyle = leafGrad;
+                ctx.fill();
+
+                // Leaf Veins
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(50, 2);
+                ctx.strokeStyle = '#a3e635';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.6;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            getPetalColor(ratio) {
+                // Determine gradient color transition from inner core to outer edge
+                let cHex = this.palette.outer;
+                let strokeHex = 'rgba(255,255,255,0.2)';
+
+                if (ratio < 0.25) {
+                    cHex = this.palette.inner;
+                    strokeHex = 'rgba(0,0,0,0.15)';
+                } else if (ratio < 0.65) {
+                    cHex = this.palette.middle;
+                }
+
+                return {
+                    fill: cHex,
+                    stroke: strokeHex
+                };
+            }
+        }
+
+        // Particle System (Pollen / Ambient Glow)
+        class Particle {
+            constructor(canvasWidth, canvasHeight) {
+                this.reset(canvasWidth, canvasHeight);
+            }
+
+            reset(width, height) {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = -Math.random() * 0.6 - 0.2;
+                this.alpha = Math.random() * 0.6 + 0.2;
+                this.life = Math.random() * 200 + 100;
+            }
+
+            update(width, height) {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life--;
+
+                if (this.life <= 0 || this.y < 0 || this.x < 0 || this.x > width) {
+                    this.reset(width, height);
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = '#fef08a';
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = '#eab308';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Initialize Main Centered Flower
+        function initMainFlower() {
+            flowers = [];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height * 0.48;
+            const radius = parseFloat(sliderSize.value);
+            const petals = parseInt(sliderPetals.value);
+            const curl = parseFloat(sliderCurl.value);
+
+            const flower = new Chrysanthemum(centerX, centerY, radius, petals, selectedPalette, curl);
+            flowers.push(flower);
+            animProgress = 0;
+        }
+
+        // Initialize Particles
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 40; i++) {
+                particles.push(new Particle(canvas.width, canvas.height));
+            }
+        }
+
+        // Main Animation Loop
+        function animate(timestamp) {
+            globalTime = timestamp || 0;
+            const speed = parseFloat(sliderSpeed.value);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Subtle Background Radial Gradient
+            const bgGrad = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 50,
+                canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height)
+            );
+            bgGrad.addColorStop(0, '#111827');
+            bgGrad.addColorStop(1, '#080c14');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update Flower Growth
+            if (animProgress < 1) {
+                animProgress += 0.005 * speed;
+                if (animProgress > 1) animProgress = 1;
+                animProgressBar.style.width = `${animProgress * 100}%`;
+            }
+
+            const wind = parseFloat(sliderWind.value);
+            const drawStem = toggleStem.checked;
+
+            // Draw Flowers
+            flowers.forEach(flower => {
+                flower.growth = animProgress;
+                flower.draw(ctx, globalTime, wind, drawStem);
+            });
+
+            // Draw Particles if Enabled
+            if (toggleParticles.checked) {
+                particles.forEach(p => {
+                    p.update(canvas.width, canvas.height);
+                    p.draw(ctx);
+                });
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // UI Initialization & Events Setup
+        function setupUI() {
+            // Render Color Swatches
+            const paletteContainer = document.getElementById('palette-buttons');
+            paletteContainer.innerHTML = '';
+
+            PALETTES.forEach((p, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `color-preset-btn w-full h-8 rounded-xl border border-white/10 flex items-center justify-center transition-all ${idx === 0 ? 'active ring-2 ring-amber-400' : ''}`;
+                btn.style.background = p.preview;
+                btn.title = p.name;
+
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('active', 'ring-2', 'ring-amber-400'));
+                    btn.classList.add('active', 'ring-2', 'ring-amber-400');
+                    selectedPalette = p;
+                    paletteNameLabel.textContent = p.name;
+                    updateFlowerProperties();
+                });
+
+                paletteContainer.appendChild(btn);
+            });
+
+            // Slider Listeners
+            sliderPetals.addEventListener('input', (e) => {
+                valPetals.textContent = `${e.target.value} Yaprak`;
+                updateFlowerProperties();
+            });
+
+            sliderSize.addEventListener('input', (e) => {
+                valSize.textContent = `${e.target.value} px`;
+                updateFlowerProperties();
+            });
+
+            sliderCurl.addEventListener('input', (e) => {
+                const map = { '1': 'Düz', '2.5': 'Orta', '5': 'Yoğun' };
+                valCurl.textContent = map[e.target.value] || `${e.target.value}x`;
+                updateFlowerProperties();
+            });
+
+            sliderWind.addEventListener('input', (e) => {
+                const v = parseFloat(e.target.value);
+                valWind.textContent = v === 0 ? 'Yok' : (v < 4 ? 'Hafif' : 'Şiddetli');
+            });
+
+            sliderSpeed.addEventListener('input', (e) => {
+                valSpeed.textContent = `${e.target.value}x`;
+            });
+
+            // Action Buttons
+            document.getElementById('btn-replay').addEventListener('click', () => {
+                animProgress = 0;
+            });
+
+            document.getElementById('btn-clear-canvas').addEventListener('click', () => {
+                flowers = [];
+            });
+
+            document.getElementById('btn-add-random').addEventListener('click', () => {
+                addRandomFlower();
+            });
+
+            document.getElementById('btn-download').addEventListener('click', downloadCanvasImage);
+
+            // Canvas Click Event: Add flower at clicked position
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const radius = parseFloat(sliderSize.value) * (0.6 + Math.random() * 0.5);
+                const petals = parseInt(sliderPetals.value);
+                const curl = parseFloat(sliderCurl.value);
+
+                const newFlower = new Chrysanthemum(x, y, radius, petals, selectedPalette, curl);
+                newFlower.growth = animProgress;
+                flowers.push(newFlower);
+            });
+
+            // Responsive Resize
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+        }
+
+        // Apply updated control parameters to existing flowers
+        function updateFlowerProperties() {
+            if (flowers.length > 0) {
+                const radius = parseFloat(sliderSize.value);
+                const petals = parseInt(sliderPetals.value);
+                const curl = parseFloat(sliderCurl.value);
+
+                flowers.forEach(flower => {
+                    flower.targetRadius = radius;
+                    flower.petalCount = petals;
+                    flower.curlFactor = curl;
+                    flower.palette = selectedPalette;
+                    // Re-calculate details
+                    const newFlower = new Chrysanthemum(flower.x, flower.y, radius, petals, selectedPalette, curl);
+                    flower.petalDetails = newFlower.petalDetails;
+                });
+            }
+        }
+
+        // Add a random flower to the canvas
+        function addRandomFlower() {
+            const x = Math.random() * (canvas.width * 0.8) + canvas.width * 0.1;
+            const y = Math.random() * (canvas.height * 0.6) + canvas.height * 0.2;
+            const radius = parseFloat(sliderSize.value) * (0.5 + Math.random() * 0.6);
+            const petals = parseInt(sliderPetals.value);
+            const curl = parseFloat(sliderCurl.value);
+            const randomPalette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+
+            const flower = new Chrysanthemum(x, y, radius, petals, randomPalette, curl);
+            flower.growth = animProgress;
+            flowers.push(flower);
+        }
+
+        // Export Canvas to PNG Image
+        function downloadCanvasImage() {
+            const link = document.createElement('a');
+            link.download = 'kasimpati-cicegi.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Window Load Initialization
+        window.onload = function () {
+            // Initialize Lucide Icons
+            lucide.createIcons();
+
+            setupUI();
+            resizeCanvas();
+            initParticles();
+
+            // Start Animation Loop
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
